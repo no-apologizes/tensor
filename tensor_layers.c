@@ -81,6 +81,7 @@ void tensor_layernorm(const Tensor4D *src, Tensor4D *wrt, const float *gamma, co
         for (size_t row = 0; row < rows_per_slice; row++) {
             const float* restrict row_ptr = &src->data[batch_offset + (row * src->stride_w)];
 
+            #pragma omp simd reduction(+:variance_sum)
             for (size_t w = 0; w < width; w++) {
                 const float diff = row_ptr[w] - mean;
                 variance_sum += diff * diff;

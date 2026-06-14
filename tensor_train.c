@@ -13,12 +13,6 @@ void tensor_relu(Tensor4D* restrict t) { // f(x) = (0, inf), that's fancy speak 
     }
 }
 
-static inline float cus_tanhf(float a) {
-    if (a >= 1.0f) return 1.0f; if (a <= -1.0f) return -1.0f;
-    // Approximates slope between -1 and 1: f(x) = x * (2 - |x|)
-    if (a < 0.0f) { return a * (2.0f + a); } else { return a * (2.0f - a); }
-}
-
 void tensor_gelu(Tensor4D* restrict t) {
     const float kNormal = 0.797884561f;
     const float kGeluCoef = 0.044715f;
@@ -29,7 +23,7 @@ void tensor_gelu(Tensor4D* restrict t) {
 
         const float a_cube = a * a * a;
         const float inner = kNormal * (a + kGeluCoef * a_cube);
-        t->data[i] = 0.5f * a * (1.0f + cus_tanhf(inner));
+        t->data[i] = 0.5f * a * (1.0f + tanhf(inner));
     }
 }
 
@@ -49,7 +43,7 @@ void tensor_kaiming_init(Tensor4D* restrict t, size_t fan_in) { // Just look it 
     const size_t height   = t->shape[2];
     const size_t width    = t->shape[3];
 
-#pragma omp parallel for collapse(2) schedule(static)
+    //#pragma omp parallel for collapse(2) schedule(static)
     for (size_t b = 0; b < batches; b++) {
         for (size_t c = 0; c < channels; c++) {
             for (size_t h = 0; h < height; h++) {
