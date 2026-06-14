@@ -10,23 +10,49 @@ typedef struct {
     float* grad;         // Gradient
 } Tensor4D;
 
+#pragma region tensor_core.c
 Tensor4D* tensor_create(size_t b, size_t c, size_t h, size_t w);                 // Create a tensor
-void tensor_free(Tensor4D* t);                                                   // Deallocate memory
 float tensor_get(const Tensor4D *t, size_t b, size_t c, size_t h, size_t w);     // Find a 1D value from a 4D coord
 void tensor_set(Tensor4D* t, size_t b, size_t c, size_t h, size_t w, float val); // Set a 1D value from a 4D coord
+void tensor_free(Tensor4D* t);                                                   // Deallocate memory
+void tensor_zero_data(Tensor4D* restrict t);
+void tensor_zero_grad(Tensor4D* restrict t);
+#pragma endregion
 
+#pragma region tensor_io.c
+int tensor_stream_csv(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
+int tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
+#pragma endregion
+
+#pragma region tensor_ops.c
 // We only want to observe Tensor A and B, so we make them immutable
 void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Tensor4D* restrict C); // Matrix multiplication for 2D tensors (batch and channel dimensions are ignored)
-void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias); // Add channel bias into every spatial pos(H * W) within that channel. We are directly modifying the tensor so it's not immutable, and we're only reading from the 1D array of bias floats
-void tensor_relu(Tensor4D* restrict t); // Rectified linear unit, f(x) = (0, inf)
-
-void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict die); // src = source and die = derivative, transpose Out Of Place
 void tensor_matmul_backwards(Tensor4D* restrict X, Tensor4D* restrict dY, Tensor4D* restrict dW, Tensor4D* restrict XT); // dW = X^T * dY
 void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX  = dY * W^T
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad);
+void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias); // Add channel bias into every spatial pos(H * W) within that channel. We are directly modifying the tensor so it's not immutable, and we're only reading from the 1D array of bias floats
+void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt); // src = source and wrt = write, transpose Out Of Place
+#pragma endregion
 
+#pragma region tensor_layers.c
+// 2D convolution pass where a smaller matrix slides across a 2D grid of data
+// A kernel is a single 2D matrix of weights that operates on a single input channel whereas a filter operates on all channels
+void tensor_conv2d(const Tensor4D* restrict input, const Tensor4D* restrict kernel, Tensor4D* restrict output);
+void tensor_layernorm(const Tensor4D* restrict src, Tensor4D* restrict wrt, const float* restrict gamma, const float* restrict beta, float epsilon);
+#pragma endregion
+
+#pragma region tensor_train.c
+void tensor_relu(Tensor4D* restrict t); // Rectified linear unit, f(x) = (0, inf)
+void tensor_gelu(Tensor4D* restrict t);
+void tensor_kaiming_init(Tensor4D* restrict t, size_t fan_in); // https://docs.pytorch.org/docs/2.12/nn.init.html#:~:text=mode%20%28Literal,backwards%20pass
+
+// Optimizers
 void tensor_sgd_step(Tensor4D* restrict t, float learning_rate); // Formula for Stochastic Gradient Descent: W_new = W_old - (learning_rate * gradient)
-//void tensor_adam_step(Tensor4D* restrict t, );
-void tensor_zero_grad(Tensor4D* restrict t);
+void tensor_adam_step(Tensor4D* restrict t, Tensor4D* restrict m, Tensor4D* restrict v, // lr stands for learning rate, Adam and Muon have very different defaults
+                        float lr, float beta1, float beta2, float epsilon, size_t timestep);
+void tensor_muon_step(Tensor4D* restrict t, Tensor4D* restrict dW, Tensor4D* restrict X, Tensor4D* restrict XT,
+                        Tensor4D* restrict Work,
+                        float lr, size_t ns_steps); // Newton-Schulz steps, usually 5
+#pragma endregion
 
 #endif // TENSOR_LIBRARY_H
