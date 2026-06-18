@@ -34,6 +34,8 @@ Tensor4D* tensor_create(size_t b, size_t c, size_t h, size_t w) {
         t->grad[i] = 0.0f;
     }
 
+    t->is_view = false;
+
     return t;
 }
 
@@ -57,8 +59,10 @@ void tensor_set(Tensor4D *t, size_t b, size_t c, size_t h, size_t w, float val) 
 
 void tensor_free(Tensor4D *t) {
     if (!t) return;
-    free(t->data);
-    free(t->grad);
+    if (!t->is_view) {
+        free(t->data);
+        free(t->grad);
+    }
     free(t);
 }
 

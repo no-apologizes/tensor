@@ -1,5 +1,6 @@
 #ifndef TENSOR_LIBRARY_H
 #define TENSOR_LIBRARY_H
+#include <stdbool.h>
 #include "stddef.h"
 
 typedef struct {
@@ -8,6 +9,7 @@ typedef struct {
     size_t total_size;   // Total elements including padding
     float* data;         // 64-byte aligned pointer
     float* grad;         // Gradient
+    bool is_view;
 } Tensor4D;
 
 #pragma region tensor_core.c
@@ -29,9 +31,11 @@ int tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, in
 void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Tensor4D* restrict C); // Matrix multiplication for 2D tensors (batch and channel dimensions are ignored)
 void tensor_matmul_backwards(Tensor4D* restrict X, Tensor4D* restrict dY, Tensor4D* restrict dW, Tensor4D* restrict XT); // dW = X^T * dY
 void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX  = dY * W^T
+Tensor4D *tensor_flatten_view(const Tensor4D *src);
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad);
 void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias); // Add channel bias into every spatial pos(H * W) within that channel. We are directly modifying the tensor so it's not immutable, and we're only reading from the 1D array of bias floats
 void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt); // src = source and wrt = write, transpose Out Of Place
+float tensor_softmax_cross_entropy_loss(Tensor4D* restrict hidden, const int* restrict labels, float* restrict accuracy);
 #pragma endregion
 
 #pragma region tensor_layers.c
@@ -43,7 +47,9 @@ void tensor_layernorm(const Tensor4D* restrict src, Tensor4D* restrict wrt, cons
 
 #pragma region tensor_train.c
 void tensor_relu(Tensor4D* restrict t); // Rectified linear unit, f(x) = (0, inf)
+void tensor_relu_backwards(Tensor4D* restrict t);
 void tensor_gelu(Tensor4D* restrict t);
+void tensor_gelu_backwards(const Tensor4D* restrict pre_gelu, Tensor4D* restrict grad);
 void tensor_kaiming_init(Tensor4D* restrict t, size_t fan_in); // https://docs.pytorch.org/docs/2.12/nn.init.html#:~:text=mode%20%28Literal,backwards%20pass
 
 // Optimizers

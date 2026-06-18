@@ -19,6 +19,6 @@ set_target_properties(tensor_shared PROPERTIES OUTPUT_NAME "tensor")
 set_target_properties(tensor_shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_options(tensor_shared PRIVATE
         -O3 -march=znver3 -ffast-math ${OpenMP_C_FLAGS})
-target_link_libraries(tensor_shared PRIVATE OpenMP::OpenMP_C)
+target_link_libraries(tensor_shared PRIVATE OpenMP::OpenMP_C m)
 
 add_custom_target(tensor ALL DEPENDS tensor_shared)

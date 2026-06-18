@@ -4,12 +4,21 @@
 #include "Headers/tensor.h"
 
 void tensor_relu(Tensor4D* restrict t) { // f(x) = (0, inf), that's fancy speak for x < 0 = 0 and x > = 0 = x
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < t->total_size; i++) {
         if (t->data[i] < 0.0f) {
             t->data[i] = 0.0f;
         }
         // We also don't care to skip across the data using the strided width or whatever because it's garbage memory and all the actual functions use strided_w
+    }
+}
+
+void tensor_relu_backwards(Tensor4D* restrict t) {
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < t->total_size; i++) {
+        if (t->data[i] <= 0.0f) {
+            t->grad[i] = 0.0f; // Zero grad for backward pass
+        }
     }
 }
 
@@ -24,6 +33,32 @@ void tensor_gelu(Tensor4D* restrict t) {
         const float a_cube = a * a * a;
         const float inner = kNormal * (a + kGeluCoef * a_cube);
         t->data[i] = 0.5f * a * (1.0f + tanhf(inner));
+    }
+}
+
+void tensor_gelu_backwards(const Tensor4D* restrict pre_gelu, Tensor4D* restrict grad) {
+    // pre_gelu is the original matrix output BEFORE it was modified by the forward gelu
+    // grad is the tensor containing the incoming backprop gradients
+
+    const float k = 0.7978845608f; // sqrt(2 / pi)
+    const float c = 0.044715f;     // gelu cubic coefficient0
+
+#pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < pre_gelu->total_size; i++) {
+        const float x = pre_gelu->data[i];
+        const float x2 = x * x;
+        const float x3 = x2 * x;
+
+        // Hyperbolic tangent core
+        const float inner = k * (x + c * x3);
+        const float tanh_inner = tanhf(inner);
+
+        // Calculate the two halves of the derivative
+        const float left_term = 0.5f * (1.0f + tanh_inner);
+        const float right_term = 0.5f * x * (1.0f - tanh_inner * tanh_inner) * k * (1.0f + 3.0f * c * x2);
+
+        // Chain Rule
+        grad->grad[i] *= (left_term + right_term);
     }
 }
 

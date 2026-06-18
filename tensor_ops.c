@@ -1,69 +1,51 @@
-#include "Headers/tensor.h"
+#include <math.h>
+#include <stdlib.h>
 
-void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Tensor4D* restrict C) { // We can use restrict here because matrix A and B are completely separate things
-    // We have batches and channels because we need to flatten a 4D matrix into a 2D matrix
+#include "Headers/tensor.h"
+void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Tensor4D* restrict C) {
     const size_t batches  = A->shape[0];
     const size_t channels = A->shape[1];
-    /*
-    Matrix A has N rows and K columns
-    A = N * K
 
-    Matrix B has K rows and M columns
-    B = K * M
+    const size_t M        = A->shape[2]; // Rows of A
+    const size_t K        = A->shape[3]; // Inner dimension (Cols of A / Rows of B)
+    const size_t N        = B->shape[3]; // Cols of B
 
-    C = N * M
-    The inner dimension K must match for the multiplication to be valid,
-    and the resulting matrix C will have the outer dimensions of A and B (N from A and M from B)
-    */
-    const size_t M        = A->shape[2];
-    const size_t K        = A->shape[3];
-    const size_t N        = B->shape[3];
-
-    // See if we're writing to shared weight matrix (gradient accumulation)
     const int broadcast_C = (C->shape[0] == 1);
 
+    const size_t b_stride_B = (B->shape[0] == 1) ? 0 : 1;
+    const size_t c_stride_B = (B->shape[1] == 1) ? 0 : 1;
+    const size_t c_stride_A = (A->shape[1] == 1) ? 0 : 1;
+
     #pragma omp parallel for collapse(2) schedule(static)
-    for (size_t b = 0; b < batches; b++) { // Anyway we can take advantage of the fact that we know the limits of the channels? Like unsigned 8-bits bc of the 0-255 color range | No, size_t already matches the native pointer size of the cpu registers and if we force it to use smaller thing, it has to spend extra clock cycles on zero or sign-extending to fit the 64-bit register
-        for (size_t c = 0; c < channels; c++) { // Also I'm aware of size_t being the standard for tracking incrementation in loops in such for C, but I'm on linux and I don't care to make it work on Windows so is there anything I can do to make it 'faster'? Or even take less memory. These are useless things to change, but I'm curious | Yes, we can use pointer aliasing to allow the compiler to preform even more aggressive optimizations
-            // Isolate the exact 2D memory planes using the padded stride
-            const size_t offset_A = (b * A->shape[1] * A->shape[2] * A->stride_w) + (c * A->shape[2] * A->stride_w);
-            const size_t offset_B = (b * B->shape[1] * B->shape[2] * B->stride_w) + (c * B->shape[2] * B->stride_w);
+    for (size_t b = 0; b < batches; b++) {
+        for (size_t c = 0; c < channels; c++) {
+            // Isolate the exact 2D memory planes using the padded stride tracking parameters
+            const size_t offset_A = (b * A->shape[1] * A->shape[2] * A->stride_w) + ((c * c_stride_A) * A->shape[2] * A->stride_w);
+            const size_t offset_B = ((b * b_stride_B) * B->shape[1] * B->shape[2] * B->stride_w) + ((c * c_stride_B) * B->shape[2] * B->stride_w);
             const size_t offset_C = (b * C->shape[1] * C->shape[2] * C->stride_w) + (c * C->shape[2] * C->stride_w);
 
-            // Use a direct pointer to the first element of the 2D plane
-            const float* slice_A = &A->data[offset_A];
-            const float* slice_B = &B->data[offset_B];
-            float* slice_C = &C->data[offset_C];
+            const float* restrict slice_A = &A->data[offset_A];
+            const float* restrict slice_B = &B->data[offset_B];
+            float* restrict slice_C       = &C->data[offset_C];
 
-            // Cache blocking constants to match zen 3 L1 and L2 sizes
-            // Size of 64 allows for 64 floats (256 bytes)
-            const size_t BLOCK_I = 64;
-            const size_t BLOCK_K = 64;
+            for (size_t i = 0; i < M; i++) {
+                const float* restrict row_A = &slice_A[i * A->stride_w];
+                float* restrict row_C       = &slice_C[i * C->stride_w];
 
-            for (size_t i0 = 0; i0 < M; i0 += BLOCK_I) {
-                const size_t i_max = (i0 + BLOCK_I < M) ? i0 + BLOCK_I : M;
-                for (size_t k0 = 0; k0 < K; k0 += BLOCK_K) {
-                    const size_t k_max = (k0 + BLOCK_K < K) ?  k0 + BLOCK_K : K;
+                for (size_t k = 0; k < K; k++) {
+                    const float val_A = row_A[k];
+                    const float* restrict row_B = &slice_B[k * B->stride_w];
 
-                    for (size_t i = i0; i < i_max; i++) {
-                        const size_t i_stride_A = i * A->stride_w;
-                        const size_t i_stride_C = i * C->stride_w;
-
-                        for (size_t k = k0; k < k_max; k++) {
-                            const float val_A = slice_A[i_stride_A + k];
-                            const size_t k_stride_B = k * B->stride_w;
-
-                            if (broadcast_C) {
-                                for (size_t j = 0;  j < N; j++) {
-                                    const float update = val_A * slice_B[k_stride_B + j];
-                                    #pragma omp atomic
-                                    slice_C[i_stride_C + j] += update;
-                                }
-                            } else {
-                                #pragma clang loop vectorize(enable) interleave(enable)
-                                for (size_t j = 0; j < N; j++) {
-                                    slice_C[i_stride_C + j] += val_A * slice_B[k_stride_B + j];
-                            }}}}}}}}
+                    if (broadcast_C) {
+                        for (size_t j = 0; j < N; j++) {
+                            #pragma omp atomic
+                            row_C[j] += val_A * row_B[j];
+                        }
+                    } else {
+                        #pragma clang loop vectorize(enable) interleave(enable)
+                        for (size_t j = 0; j < N; j++) {
+                            row_C[j] += val_A * row_B[j];
+                        }}}}}}
     #pragma omp barrier
 }
 
@@ -88,6 +70,33 @@ void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, T
     tensor_matmul_2d(dY, WT, dX);
     // Make sure to zero out dX->data with tensor_zero_grad
     // But only ONCE at the start of every batch
+}
+
+Tensor4D* tensor_flatten_view(const Tensor4D* src) {
+    if (!src) return NULL;
+
+    // Allocate a tiny amount of memory for new struct shell
+    Tensor4D* view = malloc(sizeof(Tensor4D));
+    if (!view) return NULL;
+
+    // Inherit
+    view->data = src->data;
+    view->grad = src->grad;
+
+    // Flatten axes 1, 2, and 3 down into width
+    view->shape[0] = src->shape[0]; // Batch size remains identical
+    view->shape[1] = 1;
+    view->shape[2] = 1;
+    view->shape[3] = src->shape[1] * src->shape[2] * src->shape[3]; // 1 * 28 * 28 = 784
+
+    // Inherit the padded stride alignment
+    view->stride_w  = src->stride_w;
+    view->total_size = view->shape[0] * view->shape[1] * view->shape[2] * view->stride_w;
+
+    // Declare that this struct does not own its memory buffers
+    view->is_view = true;
+
+    return view;
 }
 
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad) {
@@ -158,4 +167,64 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
                             // So, wait I already had that, never mind idk anymore
                             slice_wrt[andie * wrt->stride_w + remote] = slice_src[s_stride_src + andie];
                         }}}}}}
+}
+
+float tensor_softmax_cross_entropy_loss(Tensor4D* restrict hidden, const int* restrict labels, float* restrict accuracy) {
+    const size_t batches = hidden->shape[0];
+    const size_t classes = hidden->shape[3]; // hidden_dim = 10
+
+    float total_loss = 0.0f;
+    size_t correct_count = 0;
+
+
+    for (size_t b = 0; b < batches; b++) {
+        const float* restrict row_data = &hidden->data[b * hidden->stride_w];
+        float* restrict row_grad = &hidden->grad[b * hidden->stride_w];
+        const int target = labels[b];
+
+        // Find largest number and subtract it from everything to prevent overflow
+        float max_val = row_data[0];
+        for (size_t j = 1; j < classes; j++) {
+            if (row_data[j] > max_val) max_val = row_data[j];
+        }
+
+        // Force all negative logits to become positive and sum_exp acts as the 100%
+        float sum_exp = 0.0f;
+        for (size_t j = 0; j < classes; j++) {
+            row_grad[j] = expf(row_data[j] - max_val); // Temp store exp
+            sum_exp += row_grad[j];
+        }
+
+        // Compute Softmax Probabilities
+        for (size_t j = 0; j < classes; j++) {
+            row_grad[j] /= sum_exp; // row_grad now contains true softmax probabilities
+        }
+
+        // Loss calculation, femtofarad prevents the log of 0
+        total_loss -= logf(row_grad[target] + 1e-15f);
+
+        size_t max_idx = 0;
+        float max_prob = row_grad[0];
+        for (size_t j = 1; j < classes; j++) {
+            if (row_grad[j] > max_prob) {
+                max_prob = row_grad[j];
+                max_idx = j;
+            }
+        }
+        if (max_idx == (size_t)target) {
+            correct_count++;
+        }
+
+        // Compute Cross-Entropy Gradient: (softmax_probability - target_one_hot) / batch_size
+        for (size_t j = 0; j < classes; j++) {
+            if (j == (size_t)target) {
+                row_grad[j] = (row_grad[j] - 1.0f) / (float)batches;
+            } else {
+                row_grad[j] = row_grad[j] / (float)batches;
+            }
+        }
+    }
+
+    *accuracy = (float)correct_count / (float)batches;
+    return total_loss / (float)batches;
 }
