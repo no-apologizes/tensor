@@ -141,7 +141,7 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
     // Create threads and spread execution across them
     // Merge inner and outer loop into a single large iteration space
     // Spreads the iterations across created threads evenly
-    #pragma omp parallel for collapse(2) schedule(static)
+#pragma omp parallel for collapse(2) schedule(static)
     for (size_t b = 0; b < batches; b++) {
         for (size_t c = 0; c < channels; c++) {
             const size_t offset_src = (b * channels * src_h * src->stride_w) + (c * src_h * src->stride_w);
@@ -153,10 +153,8 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
             for (size_t i = 0; i < src_h; i += tile_size) {
                 for (size_t j = 0; j < src_w; j += tile_size) {
 
-                    for (size_t remote = j; remote < j + tile_size && remote < src_w; remote++) {
-                        // Pre-calculate the row offset for the derivative matrix (die)
-                        const size_t s_stride_src = remote * src->stride_w;
-                        for (size_t andie = i; andie < i + tile_size && andie < src_h; andie++) {
+                    for (int remote = 0; remote < tile_size && (j + remote < src_h); remote++) {
+                        for (int andie = 0; andie < tile_size && (i + andie < src_w); andie++) {
                             // In a transpose operation, either the src read or the dst write must be strided
                             // In here we have src strided because it's faster to read data because the prefetcher thinks we want to read it
                             // Sequential writes and strided reads are a much better tradeoff then sequential reads and strided writes because it's much slower as the
@@ -165,7 +163,9 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
                             // So sequential reads and strided writes are faster
                             // Nvm it's the other way around
                             // So, wait I already had that, never mind idk anymore
-                            slice_wrt[andie * wrt->stride_w + remote] = slice_src[s_stride_src + andie];
+                            size_t src_idx = (j + remote) * src->stride_w + (i + andie);
+                            size_t wrt_idx = (i + andie) * wrt->stride_w + (j + remote);
+                            slice_wrt[wrt_idx] = slice_src[src_idx];
                         }}}}}}
 }
 
