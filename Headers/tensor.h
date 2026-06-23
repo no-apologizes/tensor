@@ -22,8 +22,11 @@ void tensor_zero_grad(Tensor4D* restrict t);
 #pragma endregion
 
 #pragma region tensor_io.c
-int tensor_stream_csv(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
-int tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
+void tensor_init_csv_stream(const char* restrict filename);
+void tensor_reset_csv_stream(void);
+int  tensor_read_csv_batch(Tensor4D* restrict t, int* restrict labels, size_t batch_size);
+void tensor_close_csv_stream(void);
+int  tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
 #pragma endregion
 
 #pragma region tensor_ops.c
@@ -32,6 +35,7 @@ void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Te
 void tensor_matmul_backwards(Tensor4D* restrict X, Tensor4D* restrict dY, Tensor4D* restrict dW, Tensor4D* restrict XT); // dW = X^T * dY
 void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX  = dY * W^T
 Tensor4D* tensor_flatten_view(const Tensor4D *src);
+Tensor4D* tensor_unflatten_view();
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad);
 void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias); // Add channel bias into every spatial pos(H * W) within that channel. We are directly modifying the tensor so it's not immutable, and we're only reading from the 1D array of bias floats
 void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt); // src = source and wrt = write, transpose Out Of Place
@@ -42,6 +46,8 @@ float tensor_softmax_cross_entropy_loss(Tensor4D* restrict hidden, const int* re
 // 2D convolution pass where a smaller matrix slides across a 2D grid of data
 // A kernel is a single 2D matrix of weights that operates on a single input channel whereas a filter operates on all channels
 void tensor_conv2d(const Tensor4D* restrict input, const Tensor4D* restrict kernel, Tensor4D* restrict output);
+void tensor_strided_conv2d_backwards();
+void tensor_strided_weight_conv2d_backwards();
 void tensor_layernorm(const Tensor4D* restrict src, Tensor4D* restrict wrt, const float* restrict gamma, const float* restrict beta, float epsilon);
 #pragma endregion
 

@@ -13,6 +13,7 @@ void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Te
     const int broadcast_C = (C->shape[0] == 1);
 
     const size_t b_stride_B = (B->shape[0] == 1) ? 0 : 1;
+    const size_t b_stride_C = (C->shape[0] == 1) ? 0 : 1;
     const size_t c_stride_B = (B->shape[1] == 1) ? 0 : 1;
     const size_t c_stride_A = (A->shape[1] == 1) ? 0 : 1;
 
@@ -22,7 +23,7 @@ void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Te
             // Isolate the exact 2D memory planes using the padded stride tracking parameters
             const size_t offset_A = (b * A->shape[1] * A->shape[2] * A->stride_w) + ((c * c_stride_A) * A->shape[2] * A->stride_w);
             const size_t offset_B = ((b * b_stride_B) * B->shape[1] * B->shape[2] * B->stride_w) + ((c * c_stride_B) * B->shape[2] * B->stride_w);
-            const size_t offset_C = (b * C->shape[1] * C->shape[2] * C->stride_w) + (c * C->shape[2] * C->stride_w);
+            const size_t offset_C = ((b * b_stride_C) * C->shape[1] * C->shape[2] * C->stride_w) + (c * C->shape[2] * C->stride_w);
 
             const float* restrict slice_A = &A->data[offset_A];
             const float* restrict slice_B = &B->data[offset_B];
@@ -152,19 +153,15 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
 
             for (size_t i = 0; i < src_h; i += tile_size) {
                 for (size_t j = 0; j < src_w; j += tile_size) {
+                    for (size_t remote = 0; remote < tile_size && (j + remote < src_w); remote++) {
+                        for (size_t andie = 0; andie < tile_size && (i + andie < src_h); andie++) {
 
-                    for (int remote = 0; remote < tile_size && (j + remote < src_h); remote++) {
-                        for (int andie = 0; andie < tile_size && (i + andie < src_w); andie++) {
-                            // In a transpose operation, either the src read or the dst write must be strided
-                            // In here we have src strided because it's faster to read data because the prefetcher thinks we want to read it
-                            // Sequential writes and strided reads are a much better tradeoff then sequential reads and strided writes because it's much slower as the
-                            // cpu has to jump by the strided width which causes a whole bunch of other problems
-                            // That's only for older hardware though and Zen 3 and modern cpus have a thing called store buffers so we get that and sequential reads
-                            // So sequential reads and strided writes are faster
-                            // Nvm it's the other way around
-                            // So, wait I already had that, never mind idk anymore
-                            size_t src_idx = (j + remote) * src->stride_w + (i + andie);
-                            size_t wrt_idx = (i + andie) * wrt->stride_w + (j + remote);
+                            // Source index: Row major layout (Row * stride + Col)
+                            size_t src_idx = (i + andie) * src->stride_w + (j + remote);
+
+                            // Write index: Transposed coordinates (Col becomes Row, Row becomes Col)
+                            size_t wrt_idx = (j + remote) * wrt->stride_w + (i + andie);
+
                             slice_wrt[wrt_idx] = slice_src[src_idx];
                         }}}}}}
 }

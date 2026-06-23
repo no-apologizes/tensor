@@ -68,7 +68,7 @@ void tensor_free(Tensor4D *t) {
 
 void tensor_zero_data(Tensor4D* restrict t) {
     if (t->data) {
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < t->total_size; i++) {
             t->data[i] = 0.0f;
         }}
@@ -76,7 +76,7 @@ void tensor_zero_data(Tensor4D* restrict t) {
 
 void tensor_zero_grad(Tensor4D* restrict t) {
     if (t->grad) {
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < t->total_size; i++) {
             t->grad[i] = 0.0f;
         }}

@@ -2,40 +2,80 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int tensor_stream_csv(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size) {
-    FILE* fp = fopen(filename, "r"); // Read-only
-    if (!fp) return 0;
+static FILE* active_csv_fp = NULL;
 
+void tensor_init_csv_stream(const char* restrict filename) {
+    // Safety check: close if already open
+    if (active_csv_fp) {
+        fclose(active_csv_fp);
+    }
+
+    active_csv_fp = fopen(filename, "r");
+    if (!active_csv_fp) return;
+
+    // Burn the text header line safely
+    char line_buffer[65536];
+    if (fgets(line_buffer, sizeof(line_buffer), active_csv_fp) == NULL) {
+        fclose(active_csv_fp);
+        active_csv_fp = NULL;
+    }
+}
+
+void tensor_reset_csv_stream(void) {
+    if (active_csv_fp) {
+        rewind(active_csv_fp); // Snap file pointer back to byte 0
+        char line_buffer[65536];
+        fgets(line_buffer, sizeof(line_buffer), active_csv_fp); // Burn header again
+    }
+}
+
+int tensor_read_csv_batch(Tensor4D* restrict t, int* restrict labels, size_t batch_size) {
+    if (!active_csv_fp) return 0;
+
+    char line_buffer[65536];
     const size_t channels = t->shape[1];
     const size_t height   = t->shape[2];
     const size_t width    = t->shape[3];
 
-    for (size_t b = 0; b < batch_size && b < t->shape[0]; b++) {
-        // Parse classification label token at start of row
-        if (fscanf(fp, "%d,", &labels[b]) == EOF) break;
+    size_t rows_read = 0;
 
-        // Stream flat pixel values accounting for strided widths
+    for (size_t b = 0; b < batch_size && b < t->shape[0]; b++) {
+        // Read an entire row line into memory, stop if EOP
+        if (fgets(line_buffer, sizeof(line_buffer), active_csv_fp) == NULL) break;
+
+        rows_read++;
+        char* token_ptr = line_buffer;
+
+        // Parse target classification label
+        labels[b] = (int)strtol(token_ptr, &token_ptr, 10);
+        if (*token_ptr == ',') token_ptr++;
+
+        // Stream flat pixel elements
         for (size_t c = 0; c < channels; c++) {
             for (size_t h = 0; h < height; h++) {
-                const size_t row_offset = (b * channels * height * t->stride_w) +
+                size_t row_offset = (b * channels * height * t->stride_w) +
                                     (c * height * t->stride_w) +
                                     (h * t->stride_w);
-                float* row_ptr = &t->data[row_offset];
+                float* target_row = &t->data[row_offset];
 
                 for (size_t w = 0; w < width; w++) {
-                    int raw_pixel;
-                    if (c == channels - 1 && h == height - 1 && w == width - 1) {
-                        fscanf(fp, "%d\n", &raw_pixel); // Catch newline char
-                    } else {
-                        fscanf(fp, "%d,", &raw_pixel);
-                    }
-                    row_ptr[w] = (float)raw_pixel / 255.0f; // Normalize byte intensity
+                    int raw_pixel = (int)strtol(token_ptr, &token_ptr, 10);
+                    target_row[w] = (float)raw_pixel / 255.0f;
+                    if (*token_ptr == ',') token_ptr++;
                 }
             }
         }
     }
-    fclose(fp);
-    return 1;
+
+    // Return 1 if we got a full batch, 0 if we hit the end of the file
+    return (rows_read == batch_size) ? 1 : 0;
+}
+
+void tensor_close_csv_stream(void) {
+    if (active_csv_fp) {
+        fclose(active_csv_fp);
+        active_csv_fp = NULL;
+    }
 }
 
 int tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size) {

@@ -49,7 +49,7 @@ void tensor_gelu_backwards(const Tensor4D* restrict pre_gelu, Tensor4D* restrict
         const float x2 = x * x;
         const float x3 = x2 * x;
 
-        // Hyperbolic tangent core
+        // Hyperbolic tangent
         const float inner = k * (x + c * x3);
         const float tanh_inner = tanhf(inner);
 
@@ -116,7 +116,7 @@ void tensor_adam_step(Tensor4D* restrict t, Tensor4D* restrict m, Tensor4D* rest
         m->data[i] = (beta1 * m->data[i]) + ((1.0f - beta1) * grad);
 
         // Update based on second moment
-        v->data[i] = (beta2 * v->data[i]) + ((1.0f - beta2) * grad);
+        v->data[i] = (beta2 * v->data[i]) + ((1.0f - beta2) * grad * grad);
 
         // Compute bias-corrected versions(hat as in m^ and v^)
         const float m_hat = m->data[i] / bias_cor1;
@@ -160,20 +160,20 @@ void tensor_muon_step(Tensor4D* restrict t, Tensor4D* restrict dW, Tensor4D* res
         for (size_t remote = 0; remote < M; remote++) {
             for (size_t andie = 0; andie < M; andie++) {
                 size_t index = (remote * Work->stride_w) + andie;
-                // Generate a scaled Identity matrix, 3.0 along the main diagonal and zeros everywhere else
+                // Generate a scaled Identity Matrix, 3.0 along the main diagonal and zeros everywhere else
                 float identity = (remote == andie) ? 3.0f : 0.0f;
                 Work->data[index] = identity - Work->data[index];
             }
         }
 
-        // Reuse XT buffer to hold intermediate result
-        tensor_zero_data(XT);
-        tensor_matmul_2d(X, Work, XT); // XT = X * Work
+        // Reuse dW buffer to hold intermediate result
+        tensor_zero_data(dW);
+        tensor_matmul_2d(X, Work, dW); // XT = X * Work
 
         // Update X for the next iteration
         #pragma omp parallel for schedule(static)
         for (size_t i = 0; i < X->total_size; i++) {
-            X->data[i] = 0.5f * XT->data[i];
+            X->data[i] = 0.5f * dW->data[i];
         }
     }
 
