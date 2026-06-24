@@ -35,7 +35,8 @@ void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Te
 void tensor_matmul_backwards(Tensor4D* restrict X, Tensor4D* restrict dY, Tensor4D* restrict dW, Tensor4D* restrict XT); // dW = X^T * dY
 void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX  = dY * W^T
 Tensor4D* tensor_flatten_view(const Tensor4D *src);
-Tensor4D* tensor_unflatten_view();
+void tensor_flatten_copy(const Tensor4D* restrict src, Tensor4D* restrict wrt);
+void tensor_unflatten_copy(const Tensor4D* restrict src_grad, Tensor4D* restrict wrt_grad);
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad);
 void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias); // Add channel bias into every spatial pos(H * W) within that channel. We are directly modifying the tensor so it's not immutable, and we're only reading from the 1D array of bias floats
 void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt); // src = source and wrt = write, transpose Out Of Place
@@ -46,8 +47,12 @@ float tensor_softmax_cross_entropy_loss(Tensor4D* restrict hidden, const int* re
 // 2D convolution pass where a smaller matrix slides across a 2D grid of data
 // A kernel is a single 2D matrix of weights that operates on a single input channel whereas a filter operates on all channels
 void tensor_conv2d(const Tensor4D* restrict input, const Tensor4D* restrict kernel, Tensor4D* restrict output);
-void tensor_strided_conv2d_backwards();
-void tensor_strided_weight_conv2d_backwards();
+void tensor_im2col(const Tensor4D* restrict input, size_t k_h, size_t k_w, Tensor4D* restrict output);
+void tensor_col2im(const Tensor4D* restrict col, size_t b, size_t c, size_t h, size_t w, size_t k_h, size_t k_w, Tensor4D* restrict image);
+void tensor_strided_conv2d_backwards(const Tensor4D* restrict dY, const Tensor4D* restrict weight, Tensor4D* restrict dX);
+void tensor_strided_weight_conv2d_backwards(const Tensor4D* restrict input, const Tensor4D* restrict dY, Tensor4D* restrict dW);
+void tensor_maxpool2d(const Tensor4D* restrict input, Tensor4D* restrict output, size_t* restrict indices);
+void tensor_maxpool2d_backwards(const Tensor4D* restrict dY, Tensor4D* restrict dX, const size_t* restrict indices);
 void tensor_layernorm(const Tensor4D* restrict src, Tensor4D* restrict wrt, const float* restrict gamma, const float* restrict beta, float epsilon);
 #pragma endregion
 
@@ -65,6 +70,10 @@ void tensor_adam_step(Tensor4D* restrict t, Tensor4D* restrict m, Tensor4D* rest
 void tensor_muon_step(Tensor4D* restrict t, Tensor4D* restrict dW, Tensor4D* restrict X, Tensor4D* restrict XT,
                         Tensor4D* restrict Work,
                         float lr, size_t ns_steps); // Newton-Schulz steps, usually 5
+#pragma endregion
+
+#pragma region tensor_virus_hacks.c
+float add_bbnos(float a, float b);
 #pragma endregion
 
 #endif // TENSOR_LIBRARY_H

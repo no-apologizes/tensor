@@ -13,6 +13,7 @@ add_library(tensor_static STATIC
         tensor_layers.c
         tensor_ops.c
         tensor_train.c
+        tensor_virus_hacks.c
 )
 
 add_library(tensor_shared SHARED
@@ -21,6 +22,7 @@ add_library(tensor_shared SHARED
         tensor_layers.c
         tensor_ops.c
         tensor_train.c
+        tensor_virus_hacks.c
 )
 
 set_target_properties(tensor_static PROPERTIES OUTPUT_NAME "tensor")

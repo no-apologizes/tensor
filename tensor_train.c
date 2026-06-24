@@ -43,7 +43,7 @@ void tensor_gelu_backwards(const Tensor4D* restrict pre_gelu, Tensor4D* restrict
     const float k = 0.7978845608f; // sqrt(2 / pi)
     const float c = 0.044715f;     // gelu cubic coefficient0
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < pre_gelu->total_size; i++) {
         const float x = pre_gelu->data[i];
         const float x2 = x * x;

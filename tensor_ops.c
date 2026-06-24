@@ -100,6 +100,61 @@ Tensor4D* tensor_flatten_view(const Tensor4D* src) {
     return view;
 }
 
+void tensor_flatten_copy(const Tensor4D* restrict src, Tensor4D* restrict wrt) {
+    const size_t batches  = src->shape[0];
+    const size_t channels = src->shape[1];
+    const size_t height   = src->shape[2];
+    const size_t width    = src->shape[3];
+
+    #pragma omp parallel for collapse(2) schedule(static)
+    for (size_t b = 0; b < batches; b++) {
+        float* restrict wrt_row = &wrt->data[b * wrt->stride_w];
+        size_t wrt_idx = 0;
+
+        for (size_t c = 0; c < channels; c++) {
+            for (size_t h = 0; h < height; h++) {
+                const size_t src_offset = (b * channels * height * src->stride_w) +
+                                            (c * height * src->stride_w) +
+                                                (h * src->stride_w);
+
+                const size_t wrt_base = (c * height * width) + (h * width);
+
+                #pragma omp simd
+                for (size_t w = 0; w < width; w++) {
+                    wrt_row[wrt_base + w] = src->data[src_offset + w];
+                }
+            }
+        }
+    }
+}
+
+void tensor_unflatten_copy(const Tensor4D* restrict src_grad, Tensor4D* restrict wrt_grad) {
+    const size_t batches  = wrt_grad->shape[0];
+    const size_t channels = wrt_grad->shape[1];
+    const size_t height   = wrt_grad->shape[2];
+    const size_t width    = wrt_grad->shape[3];
+
+    #pragma omp for collapse(2) schedule(static)
+    for (size_t b = 0; b < batches; b++) {
+        const float* restrict src_row = &src_grad->grad[b * src_grad->stride_w];
+
+        for (size_t c = 0; c < channels; c++) {
+            for (size_t h = 0; h < height; h++) {
+                const size_t dst_offset = (b * channels * height * wrt_grad->stride_w) +
+                                          (c * height * wrt_grad->stride_w) +
+                                          (h * wrt_grad->stride_w);
+
+                const size_t src_base = (c * height * width) + (h * width);
+
+                #pragma omp simd
+                for (size_t w = 0; w < width; w++) {
+                    wrt_grad->grad[dst_offset + w] += src_row[src_base + w];
+                }
+            }
+        }
+    }
+}
+
 void tensor_accum_grad(Tensor4D* restrict target, const Tensor4D* restrict incoming_grad) {
     // Bound the loop strictly to the structural allocation limits of the destination target tensor
     const size_t loop_bounds = target->total_size;
