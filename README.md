@@ -33,5 +33,5 @@ cmake version 4.3.4
 
 https://app.notion.com/p/Machine-Learning-Engine-389620b9962b80c486f0edee8021b5ad
 
-[^1]: Changing -march=znver3 to -march=znver4 in [CMakeLists.txt](../blob/master/CMakeLists.txt) works and GCC may vectorize SIMD differently
-[^2]: Light debugging as fixing loop order or writing over data instead of gradients
+[^1]: Changing -march=znver3 to -march=znver4 in [CMakeLists.txt](../master/CMakeLists.txt) works and GCC may vectorize SIMD differently
+[^2]: Light debugging as fixing loop order or accidentally writing over data instead of gradients
