@@ -1,4 +1,7 @@
-A Machine Learning Engine/Library optimized for Zen 3.
+A Machine Learning Engine/Library optimized for Zen 3[^1].
+
+AI was used for pseudo code generation, research, and light debugging[^2].
+Research verified with sources such as academic papers and unclear topics were decided upon the most agreed method.
 
 gcc (GCC) 16.1.1 20260430
 
@@ -28,7 +31,9 @@ Full pipeline allowing for MLP and CNN neural networks.
     * Instead of using deeply nested sliding window loops im2col and col2im transforms overlapping spatial receptive patches into linear columns to prevent non-contiguous memory reading patterns inside a GEMM matrix
 
   - Memory Resuse:
-    * Every Tensor4D struct is instantiated with both its data and grad pointer side-by-side so the backwards pass and easily write into them and prevents continuous scratchpad matix allocation and frequent garbage collection
- 
+    * Every Tensor4D struct is instantiated with both its data and gradient pointer side-by-side so the backwards pass and easily write into them and prevents continuous scratchpad matix allocation and frequent garbage collection
 
 https://app.notion.com/p/Machine-Learning-Engine-389620b9962b80c486f0edee8021b5ad
+
+[^1]: Changing -march=znver3 to -march=znver4 in [CMakeLists.txt](../blob/master/CMakeLists.txt) works and GCC may vectorize SIMD differently
+[^2]: Light debugging as fixing loop order or writing over data instead of gradients
