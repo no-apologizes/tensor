@@ -18,7 +18,7 @@ void tensor_conv2d(const Tensor4D* restrict input, const Tensor4D* restrict kern
     for (size_t b = 0; b < batches; b++) {
         for (size_t oc = 0; oc < out_ch; oc++) {
             for (size_t oh = 0; oh < out_h; oh++) {
-                size_t out_row_offset = (b * out_ch * out_h * output->stride_w) +
+                const size_t out_row_offset = (b * out_ch * out_h * output->stride_w) +
                                         (oc * out_h * output->stride_w) +
                                         (oh * output->stride_w);
 
@@ -27,11 +27,11 @@ void tensor_conv2d(const Tensor4D* restrict input, const Tensor4D* restrict kern
 
                     for (size_t ic = 0; ic < in_ch; ic++) {
                         for (size_t kh = 0; kh < k_h; kh++) {
-                            size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
+                            const size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
                                                    (ic * in_h * input->stride_w) +
                                                    ((oh + kh) * input->stride_w);
 
-                            size_t ker_row_offset = (oc * in_ch * k_h * kernel->stride_w) +
+                            const size_t ker_row_offset = (oc * in_ch * k_h * kernel->stride_w) +
                                                     (ic * k_h * kernel->stride_w) +
                                                     (kh * kernel->stride_w);
 
@@ -57,13 +57,13 @@ void tensor_im2col(const Tensor4D* restrict input, size_t k_h, size_t k_w, Tenso
         for (size_t oh = 0; oh < out_h; oh++) {
             for (size_t ow = 0; ow < out_w; ow++) {
                 // Calculate which sequential row this patch maps to in the destination GEMM matrix
-                size_t col_row = (b * out_h * out_w) + (oh * out_w) + ow;
-                size_t out_row_offset = col_row * output->stride_w;
+                const size_t col_row = (b * out_h * out_w) + (oh * out_w) + ow;
+                const size_t out_row_offset = col_row * output->stride_w;
 
                 size_t col_idx = 0;
                 for (size_t ic = 0; ic < in_ch; ic++) {
                     for (size_t kh = 0; kh < k_h; kh++) {
-                        size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
+                        const size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
                                                (ic * in_h * input->stride_w) +
                                                ((oh + kh) * input->stride_w);
 
@@ -83,13 +83,13 @@ void tensor_col2im(const Tensor4D* restrict col, size_t b, size_t c, size_t h, s
     for (size_t batch_idx = 0; batch_idx < b; batch_idx++) {
         for (size_t oh = 0; oh < out_h; oh++) {
             for (size_t ow = 0; ow < out_w; ow++) {
-                size_t patch_row = (batch_idx * out_h * out_w) + (oh * out_w) + ow;
-                size_t col_row_offset = patch_row * col->stride_w;
+                const size_t patch_row = (batch_idx * out_h * out_w) + (oh * out_w) + ow;
+                const size_t col_row_offset = patch_row * col->stride_w;
 
                 size_t col_idx = 0;
                 for (size_t ic = 0; ic < c; ic++) {
                     for (size_t kh = 0; kh < k_h; kh++) {
-                        size_t img_row_offset = (batch_idx * c * h * image->stride_w) +
+                        const size_t img_row_offset = (batch_idx * c * h * image->stride_w) +
                                                (ic * h * image->stride_w) +
                                                ((oh + kh) * image->stride_w);
 
@@ -146,7 +146,6 @@ void tensor_strided_weight_conv2d_backwards(const Tensor4D* restrict input, cons
     const size_t batches = input->shape[0];
     const size_t in_ch   = input->shape[1];
     const size_t in_h    = input->shape[2];
-    const size_t in_w    = input->shape[3];
 
     const size_t out_ch  = dW->shape[0];
     const size_t k_h     = dW->shape[2];
@@ -159,7 +158,7 @@ void tensor_strided_weight_conv2d_backwards(const Tensor4D* restrict input, cons
     for (size_t oc = 0; oc < out_ch; oc++) {
         for (size_t ic = 0; ic < in_ch; ic++) {
             for (size_t kh = 0; kh < k_h; kh++) {
-                size_t dW_row_offset = (oc * in_ch * k_h * dW->stride_w) +
+                const size_t dW_row_offset = (oc * in_ch * k_h * dW->stride_w) +
                                        (ic * k_h * dW->stride_w) +
                                        (kh * dW->stride_w);
 
@@ -168,11 +167,11 @@ void tensor_strided_weight_conv2d_backwards(const Tensor4D* restrict input, cons
 
                     for (size_t b = 0; b < batches; b++) {
                         for (size_t oh = 0; oh < out_h; oh++) {
-                            size_t dY_row_offset = (b * out_ch * out_h * dY->stride_w) +
+                            const size_t dY_row_offset = (b * out_ch * out_h * dY->stride_w) +
                                                    (oc * out_h * dY->stride_w) +
                                                    (oh * dY->stride_w);
 
-                            size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
+                            const size_t in_row_offset = (b * in_ch * in_h * input->stride_w) +
                                                    (ic * in_h * input->stride_w) +
                                                    ((oh + kh) * input->stride_w);
 

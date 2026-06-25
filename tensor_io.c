@@ -53,13 +53,13 @@ int tensor_read_csv_batch(Tensor4D* restrict t, int* restrict labels, size_t bat
         // Stream flat pixel elements
         for (size_t c = 0; c < channels; c++) {
             for (size_t h = 0; h < height; h++) {
-                size_t row_offset = (b * channels * height * t->stride_w) +
+                const size_t row_offset = (b * channels * height * t->stride_w) +
                                     (c * height * t->stride_w) +
                                     (h * t->stride_w);
                 float* target_row = &t->data[row_offset];
 
                 for (size_t w = 0; w < width; w++) {
-                    int raw_pixel = (int)strtol(token_ptr, &token_ptr, 10);
+                    const int raw_pixel = (int)strtol(token_ptr, &token_ptr, 10);
                     target_row[w] = (float)raw_pixel / 255.0f;
                     if (*token_ptr == ',') token_ptr++;
                 }

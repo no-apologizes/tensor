@@ -82,7 +82,7 @@ void tensor_kaiming_init(Tensor4D* restrict t, size_t fan_in) { // Just look it 
     for (size_t b = 0; b < batches; b++) {
         for (size_t c = 0; c < channels; c++) {
             for (size_t h = 0; h < height; h++) {
-                size_t row_offset = (b * channels * height * t->stride_w) +
+                const size_t row_offset = (b * channels * height * t->stride_w) +
                                     (c * height * t->stride_w) +
                                     (h * t->stride_w);
 
@@ -159,9 +159,9 @@ void tensor_muon_step(Tensor4D* restrict t, Tensor4D* restrict dW, Tensor4D* res
         #pragma omp parallel for collapse(2) schedule(static)
         for (size_t remote = 0; remote < M; remote++) {
             for (size_t andie = 0; andie < M; andie++) {
-                size_t index = (remote * Work->stride_w) + andie;
+                const size_t index = (remote * Work->stride_w) + andie;
                 // Generate a scaled Identity Matrix, 3.0 along the main diagonal and zeros everywhere else
-                float identity = (remote == andie) ? 3.0f : 0.0f;
+                const float identity = (remote == andie) ? 3.0f : 0.0f;
                 Work->data[index] = identity - Work->data[index];
             }
         }

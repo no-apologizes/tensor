@@ -24,16 +24,16 @@ void tensor_zero_grad(Tensor4D* restrict t);
 #pragma region tensor_io.c
 void tensor_init_csv_stream(const char* restrict filename);
 void tensor_reset_csv_stream(void);
-int  tensor_read_csv_batch(Tensor4D* restrict t, int* restrict labels, size_t batch_size);
+int tensor_read_csv_batch(Tensor4D* restrict t, int* restrict labels, size_t batch_size);
 void tensor_close_csv_stream(void);
-int  tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
+int tensor_stream_binary(Tensor4D* restrict t, const char* restrict filename, int* restrict labels, size_t batch_size);
 #pragma endregion
 
 #pragma region tensor_ops.c
 // We only want to observe Tensor A and B, so we make them immutable
 void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Tensor4D* restrict C); // Matrix multiplication for 2D tensors (batch and channel dimensions are ignored)
 void tensor_matmul_backwards(Tensor4D* restrict X, Tensor4D* restrict dY, Tensor4D* restrict dW, Tensor4D* restrict XT); // dW = X^T * dY
-void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX  = dY * W^T
+void tensor_matmul_gradient_input(Tensor4D* restrict W, Tensor4D* restrict dY, Tensor4D* restrict dX, Tensor4D* restrict WT); // dX = dY * W^T
 Tensor4D* tensor_flatten_view(const Tensor4D *src);
 void tensor_flatten_copy(const Tensor4D* restrict src, Tensor4D* restrict wrt);
 void tensor_unflatten_copy(const Tensor4D* restrict src_grad, Tensor4D* restrict wrt_grad);

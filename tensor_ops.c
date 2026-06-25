@@ -109,7 +109,6 @@ void tensor_flatten_copy(const Tensor4D* restrict src, Tensor4D* restrict wrt) {
     #pragma omp parallel for collapse(2) schedule(static)
     for (size_t b = 0; b < batches; b++) {
         float* restrict wrt_row = &wrt->data[b * wrt->stride_w];
-        size_t wrt_idx = 0;
 
         for (size_t c = 0; c < channels; c++) {
             for (size_t h = 0; h < height; h++) {
@@ -212,10 +211,10 @@ void tensor_transpose_OOP(const Tensor4D* restrict src, Tensor4D* restrict wrt) 
                         for (size_t andie = 0; andie < tile_size && (i + andie < src_h); andie++) {
 
                             // Source index: Row major layout (Row * stride + Col)
-                            size_t src_idx = (i + andie) * src->stride_w + (j + remote);
+                            const size_t src_idx = (i + andie) * src->stride_w + (j + remote);
 
                             // Write index: Transposed coordinates (Col becomes Row, Row becomes Col)
-                            size_t wrt_idx = (j + remote) * wrt->stride_w + (i + andie);
+                            const size_t wrt_idx = (j + remote) * wrt->stride_w + (i + andie);
 
                             slice_wrt[wrt_idx] = slice_src[src_idx];
                         }}}}}}
