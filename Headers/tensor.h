@@ -73,7 +73,7 @@ void tensor_muon_step(Tensor4D* restrict t, Tensor4D* restrict dW, Tensor4D* res
 #pragma endregion
 
 #pragma region tensor_virus_hacks.c
-float add_bbnos(float a, float b);
+float unsigned_char_subtract(float a, float b);
 #pragma endregion
 
 #endif // TENSOR_LIBRARY_H
