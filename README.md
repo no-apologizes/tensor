@@ -1,6 +1,7 @@
-A Machine Learning Engine optimized for Zen 3.
+A Machine Learning Engine/Library optimized for Zen 3.
 
 gcc (GCC) 16.1.1 20260430
+
 cmake version 4.3.4
 
 Full pipeline allowing for MLP and CNN neural networks.
@@ -15,7 +16,7 @@ Full pipeline allowing for MLP and CNN neural networks.
   Inner matrix rows are forced to sit within CPU L1 cache
   
   - ikj instead of ijk: (tensor_matmul_2d)
-    * ikj ensures that both C and B are sequentially stepping through rows and GCC can auto-vectorize this and generate AVX-512 vector instructions(Zen 3 is only AVX2(256) but 512 can be achived by double pumping)
+    * ikj ensures that both C and B are sequentially stepping through rows and GCC can auto-vectorize and generate AVX-512 vector instructions(Zen 3 is only AVX2(256) but 512 can be achived by double pumping)
 
   - Out Of Place Transpose: (transpose_OOP)
     * An OOP transpose keeps all data sequential and padded as transposing in place across rows and columns would destroy padded cache boundaries and be complicated to implement
