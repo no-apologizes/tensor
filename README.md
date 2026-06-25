@@ -1,6 +1,6 @@
 A Machine Learning Engine/Library optimized for Zen 3[^1].
 
-AI was used for pseudo code generation, research, and light debugging[^2].
+AI was used for pseudo code generation, research, and light debugging[^2].  
 Research verified with sources such as academic papers and unclear topics were decided upon the most agreed method.
 
 gcc (GCC) 16.1.1 20260430
