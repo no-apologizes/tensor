@@ -31,7 +31,10 @@ cmake version 4.3.4
   - Memory Resuse:
     * Every Tensor4D struct is instantiated with both its data and gradient pointer side-by-side so the backwards pass and easily write into them and prevents continuous scratchpad matix allocation and frequent garbage collection
 
+Basic pipeline of neural network:    
 https://app.notion.com/p/Machine-Learning-Engine-389620b9962b80c486f0edee8021b5ad
+
+unsigned_char_subtract within [tensor_virus_hacks.c](../master/tensor_virus_hacks) is a joke function and shouldn't be here but I can do whatever I want.
 
 [^1]: Changing -march=znver3 to -march=znver4 in [CMakeLists.txt](../master/CMakeLists.txt) works and GCC may vectorize SIMD differently
 [^2]: Light debugging as fixing loop order or accidentally writing over data instead of gradients
