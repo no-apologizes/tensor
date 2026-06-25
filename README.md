@@ -1,4 +1,4 @@
-A Machine Learning Engine/Library optimized for Zen 3[^1].    
+A Machine Learning Engine/Library optimized for Zen 3[^1] cache lines.    
 Full pipeline allowing for MLP and CNN neural networks.
 
 AI was used for pseudo code generation, research, and light debugging[^2].    
