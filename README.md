@@ -1,6 +1,6 @@
 A Machine Learning Engine/Library optimized for Zen 3[^1] cache lines.    
 Full pipeline allowing for MLP and CNN neural networks.    
-All code _can_** be compiled with just standard glibc
+All code *_can_* be compiled with just standard glibc
 Counting *.h and *c files, there are 817 lines of code
 
 AI was used for pseudo code generation, research, and light debugging[^2].    
