@@ -77,3 +77,11 @@ float unsigned_char_subtract(float a, float b);
 #pragma endregion
 
 #endif // TENSOR_LIBRARY_H
+
+/*
+Todos, C and Python:
+Batch shuffling
+Weight decay (L2 regularization)
+Skip Connections
+LR Scheduler
+*/

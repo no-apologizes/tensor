@@ -23,16 +23,13 @@ void tensor_relu_backwards(Tensor4D* restrict t) {
 }
 
 void tensor_gelu(Tensor4D* restrict t) {
-    const float kNormal = 0.797884561f;
-    const float kGeluCoef = 0.044715f;
+    const float kAlpha = 1.702f;
 
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < t->total_size; i++) {
-        const float a = t->data[i];
-
-        const float a_cube = a * a * a;
-        const float inner = kNormal * (a + kGeluCoef * a_cube);
-        t->data[i] = 0.5f * a * (1.0f + tanhf(inner));
+        const float x = t->data[i];
+        // Fast Sigmoid Approximation: x / (1.0f + expf(-1.702f * x))
+        t->data[i] = x / (1.0f + expf(-kAlpha * x));
     }
 }
 

@@ -43,7 +43,7 @@ void tensor_matmul_2d(const Tensor4D* restrict A, const Tensor4D* restrict B, Te
                             row_C[j] += val_A * row_B[j];
                         }
                     } else {
-                        #pragma clang loop vectorize(enable) interleave(enable)
+                        #pragma GCC ivdep
                         for (size_t j = 0; j < N; j++) {
                             row_C[j] += val_A * row_B[j];
                         }}}}}}
@@ -179,7 +179,7 @@ void tensor_add_bias(Tensor4D* restrict t, const float* restrict bias) {
             for (size_t h = 0; h < height; h++) { // Step vertically through the current 2D matrix slice
                 // Get pointer to the start of this specific row
                 float* restrict row_ptr = &t->data[(b * channels * height * t->stride_w) + (c * height * t->stride_w) + (h * t->stride_w)];
-#pragma clang loop vectorize(enable)
+                #pragma GCC ivdep
                 for (size_t w = 0; w < width; w++) { // Here we step horizontally along the columns of our row
                     row_ptr[w] += b_val;
                 }}}}
